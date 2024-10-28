@@ -1,0 +1,26 @@
+# Ignorar archivos de entorno (contienen información sensible como contraseñas)
+.env
+
+# Ignorar archivos y carpetas de caché de Python
+__pycache__/
+*.py[cod]
+
+# Ignorar configuraciones locales de IDE (en caso de usar VSCode)
+.vscode/
+.idea/
+
+# Ignorar entornos virtuales
+venv/
+.env/  # si creaste un entorno virtual en una carpeta .env
+
+# Archivos de dependencias y compilación
+*.log
+*.db
+*.sqlite3
+
+
+# Archivos creados por el sistema
+Thumbs.db  # Windows
+
+# Ignorar otras carpetas de compilación
+*.egg-info/
