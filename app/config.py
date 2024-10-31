@@ -9,4 +9,4 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 # Usar la variable de entorno para la conexión
 CONNECTION_STRING = os.getenv("MONGO_CONNECTION_STRING")
 client = MongoClient(CONNECTION_STRING)
-db = client["MiCosmoDB"]
+db = client["TecnoNic"]

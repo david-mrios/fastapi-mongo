@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from app.config import db
 from app.models import Item
+from app.models import Question
 from typing import List
 
 router = APIRouter()
@@ -14,9 +15,9 @@ def create_item(item: Item):
         return item
     raise HTTPException(status_code=400, detail="Error al insertar un registro")
 
-@router.get("/items", response_model=List[Item])
+@router.get("/Question", response_model=List[Question])
 def read_items():
-    collection = db["items"]
+    collection = db["FAQ"]
     items = list(collection.find())
     return items
 
