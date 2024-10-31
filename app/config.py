@@ -2,6 +2,7 @@
 from pymongo import MongoClient
 from dotenv import load_dotenv  # Cargar dotenv
 import os
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # Cargar el archivo .env ubicado en el nivel principal
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
