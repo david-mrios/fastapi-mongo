@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from app.config import db
 from app.models import FAQ, Pregunta, CarritoCompras, ComentariosValoraciones, RecomendacionProducto
-from typing import List
+from typing import List, Optional
 from bson import ObjectId
+
 
 router = APIRouter()
 
@@ -189,3 +190,40 @@ def delete_RecomendacionProducto(recomendacion_id: str):
     if result.deleted_count == 1:
         return {"detail": "Recomendación eliminada"}
     raise HTTPException(status_code=404, detail="Recomendación no encontrada")
+
+@router.get("/CarritoCompras/buscar")
+async def buscar_carritos(
+    precio: Optional[float] = Query(
+        None, description="Precio del producto en el carrito"),
+    correo: Optional[str] = Query(
+        None, description="Correo del cliente asociado al carrito")
+):
+    try:
+        collection = db["CarritoCompras"]
+        query = {}
+
+        # Filtrar por correo si está presente
+        if correo:
+            query["Cliente.Correo"] = {"$regex": correo, "$options": "i"}
+
+        # Filtrar productos con precio exacto si está presente
+        if precio is not None:
+            query["Productos"] = {"$elemMatch": {"PrecioUnitario": precio}}
+
+        # Realizar la búsqueda con los filtros aplicados
+        carritos = list(collection.find(query))
+
+        # Convertir ObjectId a string para cada carrito
+        for carrito in carritos:
+            carrito["_id"] = str(carrito["_id"])
+
+        # Si no se encontraron carritos, retornar un mensaje adecuado
+        if not carritos:
+            raise HTTPException(
+                status_code=404, detail="No se encontraron carritos con los filtros especificados")
+
+        return carritos
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error interno del servidor: {str(e)}")
