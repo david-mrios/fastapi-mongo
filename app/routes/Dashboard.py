@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from app.config import db
 from app.models import FAQ, Pregunta, CarritoCompras, ComentariosValoraciones, RecomendacionProducto
-from typing import List
-from bson import ObjectId
+from typing import List, Dict, Any, Optional
+from bson.objectid import ObjectId
+
 
 router = APIRouter()
 
@@ -189,3 +190,112 @@ def delete_RecomendacionProducto(recomendacion_id: str):
     if result.deleted_count == 1:
         return {"detail": "Recomendación eliminada"}
     raise HTTPException(status_code=404, detail="Recomendación no encontrada")
+
+
+
+# Read CarritoCompras items with product unit price greater than 100
+@router.get("/carrito-precio-mayor-100")
+async def obtener_carritos_con_precio_mayor_a_100():
+    collection = db["CarritoCompras"]  
+    carritos = list(collection.find({"Productos.PrecioUnitario": {"$gt": 100}}))
+    # Verificar si hay resultados
+    if not carritos:
+        raise HTTPException(status_code=404, detail="No se encontraron carritos con productos cuyo precio unitario sea mayor a 100")
+
+    
+    for carrito in carritos:
+        carrito["_id"] = str(carrito["_id"])
+    
+    return carritos
+
+
+
+@router.get("/recomendacion-producto-test")
+async def obtener_recomendaciones():
+    try:
+        # Consulta a MongoDB
+        collection = db["RecomendacionProducto"]
+        resultados = collection.find({
+            "Cliente.Correo": {
+                "$regex": "@example.com$",
+                "$options": "i"
+            },
+            "Productos": {
+                "$elemMatch": {
+                    "PrecioUnitario": {"$lt": 50}
+                }
+            }
+        })
+
+        
+        recomendaciones = []
+        for doc in resultados:
+            doc["_id"] = str(doc["_id"])  # Convertimos ObjectId a string
+            recomendaciones.append(doc)
+        if not recomendaciones:
+            raise HTTPException(status_code=404, detail="No se encontraron recomendaciones.")
+
+        return recomendaciones
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@router.get("/recomendacion-producto-test-valoracion")
+async def obtener_recomendaciones_valoracion():
+    try:
+        # Consulta a MongoDB
+        collection = db["RecomendacionProducto"]
+        resultados = collection.find({
+            "Valoracion": {"$gt": 2}
+        }).sort([("FechaComentario", -1)]).limit(2)
+
+        recomendaciones = []
+        for doc in resultados:
+            doc["_id"] = str(doc["_id"])  # Convertimos ObjectId a string
+            recomendaciones.append(doc)
+        if not recomendaciones:
+            raise HTTPException(status_code=404, detail="No se encontraron recomendaciones.")
+
+        return recomendaciones
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/CarritoComprasTest/buscar")
+async def buscar_carritos(
+    precio: Optional[float] = Query(None, description="Precio del producto en el carrito"),
+    correo: Optional[str] = Query(None, description="Correo del cliente asociado al carrito")
+):
+    try:
+        collection = db["CarritoCompras"]
+        query = {}
+
+        # Filtrar por correo si está presente
+        if correo:
+            query["Cliente.Correo"] = {"$regex": correo, "$options": "i"}
+
+        # Filtrar productos con precio exacto si está presente
+        if precio is not None:
+            query["Productos"] = {"$elemMatch": {"PrecioUnitario": precio}}
+
+  
+        carritos = list(collection.find(query))
+
+        # Convertir ObjectId a string para cada carrito (si se utiliza el _id)
+        for carrito in carritos:
+            carrito["_id"] = str(carrito["_id"])
+
+        # Si no se encontraron carritos, retornar un mensaje adecuado
+        if not carritos:
+            raise HTTPException(
+                status_code=404, detail="No se encontraron carritos con los filtros especificados"
+            )
+
+        return carritos
+
+    except Exception as e:
+        # Manejo de excepciones en caso de error
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
