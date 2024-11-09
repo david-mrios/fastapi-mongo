@@ -271,17 +271,20 @@ async def buscar_carritos(
 ):
     try:
         collection = db["CarritoCompras"]
-        query = {}
+        query = {"$or": []}  # Usar $or para combinar condiciones
 
         # Filtrar por correo si está presente
         if correo:
-            query["Cliente.Correo"] = {"$regex": correo, "$options": "i"}
+            query["$or"].append({"Cliente.Correo": {"$regex": correo, "$options": "i"}})
 
         # Filtrar productos con precio exacto si está presente
         if precio is not None:
-            query["Productos"] = {"$elemMatch": {"PrecioUnitario": precio}}
+            query["$or"].append({"Productos": {"$elemMatch": {"PrecioUnitario": precio}}})
 
-  
+        # Si no se especifica ningún filtro, devolver todos los carritos
+        if not query["$or"]:
+            return list(collection.find())  # Devuelve todos los carritos
+
         carritos = list(collection.find(query))
 
         # Convertir ObjectId a string para cada carrito (si se utiliza el _id)
