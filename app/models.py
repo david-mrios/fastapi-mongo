@@ -2,8 +2,7 @@ from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
 from datetime import datetime
 from pydantic_core import CoreSchema, core_schema
-from pydantic import GetJsonSchemaHandler
-from typing import Any, List, Optional, Annotated
+from typing import Any, List, Annotated
 
 
 class PyObjectId(ObjectId):
@@ -18,11 +17,7 @@ class PyObjectId(ObjectId):
         return ObjectId(str(v))
 
     @classmethod
-    def __get_pydantic_core_schema__(
-        cls,
-        _source_type: Any,
-        _handler: Any
-    ) -> CoreSchema:
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: Any) -> CoreSchema:
         return core_schema.json_or_python_schema(
             json_schema=core_schema.str_schema(),
             python_schema=core_schema.union_schema([
@@ -38,14 +33,6 @@ class PyObjectId(ObjectId):
             ),
         )
 
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls,
-        _core_schema: CoreSchema,
-        handler: GetJsonSchemaHandler,
-    ) -> dict[str, Any]:
-        return handler(core_schema.str_schema())
-
 
 PydanticObjectId = Annotated[PyObjectId, None]
 
@@ -54,10 +41,9 @@ class FAQ(BaseModel):
     Respuesta: str
     pregunta_id: PyObjectId = Field(..., alias="pregunta_id")
 
-    model_config = {
-        "json_encoders": {ObjectId: str},
-        "arbitrary_types_allowed": True
-    }
+    class Config:
+        json_encoders = {ObjectId: str}
+        arbitrary_types_allowed = True
 
 
 class Cliente(BaseModel):
@@ -71,11 +57,9 @@ class Pregunta(BaseModel):
     Pregunta: str
     Cliente: Cliente
 
-    model_config = {
-        "populate_by_name": True,
-        "json_encoders": {ObjectId: str},
-        "arbitrary_types_allowed": True
-    }
+    class Config:
+        json_encoders = {ObjectId: str}
+        arbitrary_types_allowed = True
 
 
 class Producto(BaseModel):
@@ -90,11 +74,9 @@ class CarritoCompras(BaseModel):
     Cliente: Cliente
     Productos: List[Producto]
 
-    model_config = {
-        "populate_by_name": True,
-        "json_encoders": {ObjectId: str, datetime: lambda v: v.isoformat()},
-        "arbitrary_types_allowed": True
-    }
+    class Config:
+        json_encoders = {ObjectId: str, datetime: lambda v: v.isoformat()}
+        arbitrary_types_allowed = True
 
 
 class ComentariosValoraciones(BaseModel):
@@ -104,11 +86,9 @@ class ComentariosValoraciones(BaseModel):
     Cliente: Cliente
     Productos: List[Producto]
 
-    model_config = {
-        "populate_by_name": True,
-        "json_encoders": {ObjectId: str, datetime: lambda v: v.isoformat()},
-        "arbitrary_types_allowed": True
-    }
+    class Config:
+        json_encoders = {ObjectId: str, datetime: lambda v: v.isoformat()}
+        arbitrary_types_allowed = True
 
 
 class RecomendacionProducto(BaseModel):
@@ -119,8 +99,6 @@ class RecomendacionProducto(BaseModel):
     Cliente: Cliente
     Productos: List[Producto]
 
-    model_config = {
-        "populate_by_name": True,
-        "json_encoders": {ObjectId: str, datetime: lambda v: v.isoformat()},
-        "arbitrary_types_allowed": True
-    }
+    class Config:
+        json_encoders = {ObjectId: str, datetime: lambda v: v.isoformat()}
+        arbitrary_types_allowed = True
