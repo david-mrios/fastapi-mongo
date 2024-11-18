@@ -110,10 +110,12 @@ async def buscar_carritos(
 def serialize_document(document):
     document["_id"] = str(document["_id"])  # Convertir ObjectId a string
     if "pedido" in document and "_id_pedido" in document["pedido"]:
-        document["pedido"]["_id_pedido"] = str(document["pedido"]["_id_pedido"])  # Convertir ObjectId en pedido
+        document["pedido"]["_id_pedido"] = str(
+            document["pedido"]["_id_pedido"])  # Convertir ObjectId en pedido
     # Conversión de ObjectId para cualquier campo adicional que requiera serialización
     if "preguntas" in document:
-        document["preguntas"] = [str(p) if isinstance(p, ObjectId) else p for p in document["preguntas"]]
+        document["preguntas"] = [str(p) if isinstance(
+            p, ObjectId) else p for p in document["preguntas"]]
     if "respuestas" in document:
         for respuesta in document["respuestas"]:
             respuesta["_id"] = str(respuesta["_id"])
@@ -143,9 +145,11 @@ async def agrupar_comentarios_por_razon_fecha():
 
         # Serializamos cada documento del resultado
         for doc in resultado:
-            doc["_id"]["Razon"] = str(doc["_id"]["Razon"])  # Convertir ObjectId en _id.Razon si es necesario
-            doc["comentarios"] = [serialize_document(comentario) for comentario in doc["comentarios"]]
-        
+            # Convertir ObjectId en _id.Razon si es necesario
+            doc["_id"]["Razon"] = str(doc["_id"]["Razon"])
+            doc["comentarios"] = [serialize_document(
+                comentario) for comentario in doc["comentarios"]]
+
         return resultado
 
     except Exception as e:
@@ -164,6 +168,7 @@ async def productos_mas_vendidos():
                 "_id": "$Productos.Nombre",
                 "total_vendidos": {"$sum": "$Productos.Cantidad"}
             }},
+            {"$project": {"_id": 1, "total_vendidos": 1}},
             {"$sort": {"total_vendidos": -1}},
             {"$limit": 10}
         ]
@@ -185,24 +190,33 @@ async def clientes_mas_preguntas():
                 "total_preguntas": {"$sum": 1},
                 "preguntas": {"$push": "$_id"}
             }},
-            {"$sort": {"total_preguntas": -1}}
+            {"$sort": {"total_preguntas": -1}},
+            {"$project": {
+                "_id": 1,
+                "total_preguntas": 1,
+                "preguntas": 1
+            }}
+
         ]
         clientes = list(collection_pregunta.aggregate(pipeline))
 
         for cliente in clientes:
             # Convertir ObjectId de las preguntas antes de hacer la consulta
-            cliente["preguntas"] = [str(pregunta_id) for pregunta_id in cliente["preguntas"]]
-            
+            cliente["preguntas"] = [str(pregunta_id)
+                                    for pregunta_id in cliente["preguntas"]]
+
             cliente["respuestas"] = list(collection_faq.find(
-                {"pregunta_id": {"$in": [ObjectId(pregunta) for pregunta in cliente["preguntas"]]}}
+                {"pregunta_id": {
+                    "$in": [ObjectId(pregunta) for pregunta in cliente["preguntas"]]}}
             ))
 
             # Serializar cada respuesta para convertir _id de ObjectId a string
-            cliente["respuestas"] = [serialize_document(resp) for resp in cliente["respuestas"]]
+            cliente["respuestas"] = [serialize_document(
+                resp) for resp in cliente["respuestas"]]
 
         # Serializar cada cliente para convertir cualquier ObjectId
         return [serialize_document(cliente) for cliente in clientes]
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error interno del servidor: {str(e)}"
@@ -239,9 +253,11 @@ async def filtrar_historial(correo: Optional[str] = None, fecha_inicio: Optional
             try:
                 fecha_inicio_dt = datetime.fromisoformat(fecha_inicio)
                 fecha_fin_dt = datetime.fromisoformat(fecha_fin)
-                query["FechaCreacion"] = {"$gte": fecha_inicio_dt, "$lte": fecha_fin_dt}
+                query["FechaCreacion"] = {
+                    "$gte": fecha_inicio_dt, "$lte": fecha_fin_dt}
             except ValueError:
-                raise HTTPException(status_code=400, detail="Formato de fecha incorrecto. Debe ser ISO 8601.")
+                raise HTTPException(
+                    status_code=400, detail="Formato de fecha incorrecto. Debe ser ISO 8601.")
 
         # Buscar en la colección HistorialCompras con el filtro construido
         historial_compras = list(collection_historial.find(query))
@@ -283,14 +299,14 @@ async def pedidos_por_cliente_fecha(correo: Optional[str] = None, fecha_inicio: 
     try:
         # Colección de HistorialCompras
         collection_historial = db["HistorialCompras"]
-        
+
         # Query base
         query = {}
-        
+
         # Si se pasa el correo, se busca por ese campo en los registros de HistorialCompras
         if correo:
             query["Cliente.Correo"] = {"$regex": correo, "$options": "i"}
-        
+
         # Si se pasa el rango de fechas, filtramos también por las fechas de creación
         if fecha_inicio and fecha_fin:
             query["FechaCreacion"] = {
@@ -306,7 +322,8 @@ async def pedidos_por_cliente_fecha(correo: Optional[str] = None, fecha_inicio: 
             return []
 
         # Si encontramos un historial, extraemos los _id_pedido correspondientes
-        pedido_ids = [historial["pedido"]["_id_pedido"] for historial in historial_compras]
+        pedido_ids = [historial["pedido"]["_id_pedido"]
+                      for historial in historial_compras]
 
         # Ahora buscar en la colección Pedido, usando los _id_pedido encontrados
         collection_pedido = db["Pedido"]
@@ -324,16 +341,18 @@ async def pedidos_por_cliente_fecha(correo: Optional[str] = None, fecha_inicio: 
 async def contar_por_satisfaccion():
     try:
         collection = db["RecomendacionProducto"]
-        
+
         # Pipeline para agrupar por rango de la valoración
         pipeline = [
             {
                 "$bucket": {
                     "groupBy": "$Valoracion",  # Agrupar por valoracion numérica
-                    "boundaries": [0, 2, 4, 5],  # Rango de satisfacción: [0-2, 2-4, 4-5]
+                    # Rango de satisfacción: [0-2, 2-4, 4-5]
+                    "boundaries": [0, 2, 4, 5],
                     "default": "Sin clasificar",  # Valor predeterminado para fuera de rango
                     "output": {
-                        "conteo": {"$sum": 1}  # Contar la cantidad de registros en cada grupo
+                        # Contar la cantidad de registros en cada grupo
+                        "conteo": {"$sum": 1}
                     }
                 }
             },
@@ -344,7 +363,8 @@ async def contar_por_satisfaccion():
                         "$switch": {
                             "branches": [
                                 {"case": {"$eq": ["$_id", 0]}, "then": "Bajo"},
-                                {"case": {"$eq": ["$_id", 2]}, "then": "Medio"},
+                                {"case": {"$eq": ["$_id", 2]},
+                                    "then": "Medio"},
                                 {"case": {"$eq": ["$_id", 4]}, "then": "Alto"}
                             ],
                             "default": "Sin clasificar"
@@ -354,7 +374,7 @@ async def contar_por_satisfaccion():
                 }
             }
         ]
-        
+
         resultado = list(collection.aggregate(pipeline))
         return resultado
     except Exception as e:
